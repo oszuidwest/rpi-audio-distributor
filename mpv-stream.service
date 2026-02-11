@@ -1,0 +1,26 @@
+[Unit]
+Description=Audio Stream Player
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/audio-distributor/config
+ExecStart=/usr/bin/mpv \
+  --no-video \
+  --audio-device=${AUDIO_DEVICE} \
+  --volume=${VOLUME} \
+  --network-timeout=5 \
+  --demuxer-readahead-secs=3 \
+  --cache=yes \
+  --cache-secs=3 \
+  --input-ipc-server=/tmp/mpv-audio.sock \
+  --idle=no \
+  --user-agent="rpi-audio-distributor (${HOSTNAME})" \
+  "${STREAM_URL}"
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=0
+
+[Install]
+WantedBy=default.target

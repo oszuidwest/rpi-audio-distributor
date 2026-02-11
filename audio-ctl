@@ -1,0 +1,173 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# audio-ctl — CLI tool for managing the rpi-audio-distributor
+# Installed to /usr/local/bin/audio-ctl
+
+IPC_SOCKET="/tmp/mpv-audio.sock"
+
+# Find the user who owns the mpv-stream service by checking the IPC socket
+find_config() {
+  if [ ! -S "$IPC_SOCKET" ]; then
+    echo "Error: mpv IPC socket not found at $IPC_SOCKET" >&2
+    echo "Is the mpv-stream service running?" >&2
+    exit 1
+  fi
+
+  CONFIG_USER=$(stat -c '%U' "$IPC_SOCKET" 2>/dev/null)
+  if [ -z "$CONFIG_USER" ]; then
+    echo "Error: Could not determine service owner" >&2
+    exit 1
+  fi
+
+  CONFIG_FILE="/home/${CONFIG_USER}/.config/audio-distributor/config"
+  if [ ! -f "$CONFIG_FILE" ]; then
+    echo "Error: Config file not found at $CONFIG_FILE" >&2
+    exit 1
+  fi
+}
+
+# Send a command to mpv via IPC and return the response
+mpv_ipc() {
+  local cmd="$1"
+  echo "$cmd" | socat - "$IPC_SOCKET" 2>/dev/null
+}
+
+# Get a property from mpv
+mpv_get_property() {
+  local prop="$1"
+  local response
+  response=$(mpv_ipc "{\"command\":[\"get_property\",\"$prop\"]}")
+  echo "$response" | jq -r '.data // empty'
+}
+
+# Read a value from the config file
+config_get() {
+  local key="$1"
+  grep "^${key}=" "$CONFIG_FILE" 2>/dev/null | cut -d'=' -f2- | tr -d '"'
+}
+
+# Update a value in the config file
+config_set() {
+  local key="$1"
+  local value="$2"
+  if grep -q "^${key}=" "$CONFIG_FILE" 2>/dev/null; then
+    sed -i "s|^${key}=.*|${key}=\"${value}\"|" "$CONFIG_FILE"
+  else
+    echo "${key}=\"${value}\"" >> "$CONFIG_FILE"
+  fi
+}
+
+# Restart the mpv-stream service for the config owner
+restart_service() {
+  if [ "$(id -un)" = "$CONFIG_USER" ]; then
+    systemctl --user restart mpv-stream
+  else
+    sudo -u "$CONFIG_USER" XDG_RUNTIME_DIR="/run/user/$(id -u "$CONFIG_USER")" systemctl --user restart mpv-stream
+  fi
+}
+
+cmd_status() {
+  find_config
+
+  local state volume audio_device stream_url
+  state=$(mpv_get_property "pause" 2>/dev/null)
+  volume=$(mpv_get_property "volume" 2>/dev/null)
+  audio_device=$(config_get "AUDIO_DEVICE")
+  stream_url=$(config_get "STREAM_URL")
+
+  echo "Stream URL:   ${stream_url:-unknown}"
+  echo "Audio device: ${audio_device:-unknown}"
+
+  if [ "$state" = "false" ]; then
+    echo "State:        playing"
+  elif [ "$state" = "true" ]; then
+    echo "State:        paused"
+  else
+    echo "State:        unknown"
+  fi
+
+  echo "Volume:       ${volume:-unknown}"
+}
+
+cmd_volume() {
+  find_config
+
+  if [ $# -eq 0 ]; then
+    local volume
+    volume=$(mpv_get_property "volume" 2>/dev/null)
+    echo "${volume:-unknown}"
+    return
+  fi
+
+  local new_volume="$1"
+
+  # Validate volume is a number between 0 and 100
+  if ! [[ "$new_volume" =~ ^[0-9]+$ ]] || [ "$new_volume" -gt 100 ]; then
+    echo "Error: Volume must be a number between 0 and 100" >&2
+    exit 1
+  fi
+
+  # Set volume via IPC (immediate effect)
+  mpv_ipc "{\"command\":[\"set_property\",\"volume\",${new_volume}]}" > /dev/null
+
+  # Persist to config
+  config_set "VOLUME" "$new_volume"
+
+  echo "Volume set to ${new_volume}"
+}
+
+cmd_stream() {
+  find_config
+
+  if [ $# -eq 0 ]; then
+    local stream_url
+    stream_url=$(config_get "STREAM_URL")
+    echo "${stream_url:-unknown}"
+    return
+  fi
+
+  local new_url="$1"
+
+  # Persist to config
+  config_set "STREAM_URL" "$new_url"
+
+  # Restart service to pick up new URL
+  restart_service
+
+  echo "Stream URL changed to ${new_url}"
+  echo "Service restarted"
+}
+
+cmd_restart() {
+  find_config
+  restart_service
+  echo "Service restarted"
+}
+
+cmd_help() {
+  echo "Usage: audio-ctl <command> [arguments]"
+  echo ""
+  echo "Commands:"
+  echo "  status        Show playback state, stream URL, volume, and audio device"
+  echo "  volume        Show current volume"
+  echo "  volume <0-100> Set volume (persists across restarts)"
+  echo "  stream        Show current stream URL"
+  echo "  stream <url>  Change stream URL and restart service"
+  echo "  restart       Restart the mpv-stream service"
+  echo "  help          Show this help message"
+}
+
+# Main command dispatch
+case "${1:-help}" in
+  status)  cmd_status ;;
+  volume)  shift; cmd_volume "$@" ;;
+  stream)  shift; cmd_stream "$@" ;;
+  restart) cmd_restart ;;
+  help|--help|-h) cmd_help ;;
+  *)
+    echo "Unknown command: $1" >&2
+    cmd_help >&2
+    exit 1
+    ;;
+esac

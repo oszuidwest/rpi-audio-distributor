@@ -1,0 +1,27 @@
+name: Bash linter
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.sh'
+      - 'audio-ctl'
+  pull_request:
+    paths:
+      - '**.sh'
+      - 'audio-ctl'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Run ShellCheck
+        uses: azohra/shell-linter@latest
+        with:
+          path: "install.sh,health-check.sh,audio-ctl"
