@@ -94,6 +94,11 @@ echo -e "${GREEN}✓ Timezone set${NC}"
 # Set hostname
 echo -e "${BLUE}►► Setting hostname to ${DEVICE_HOSTNAME}...${NC}"
 sudo hostnamectl set-hostname "$DEVICE_HOSTNAME"
+if grep -q "^127\.0\.1\.1" /etc/hosts; then
+  sudo sed -i "s/^127\.0\.1\.1.*/127.0.1.1\t${DEVICE_HOSTNAME}/" /etc/hosts
+else
+  echo -e "127.0.1.1\t${DEVICE_HOSTNAME}" | sudo tee -a /etc/hosts > /dev/null
+fi
 echo -e "${GREEN}✓ Hostname set${NC}"
 
 # OS updates
