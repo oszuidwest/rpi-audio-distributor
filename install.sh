@@ -25,30 +25,6 @@ assert_os_64bit
 assert_hw_rpi 4
 assert_tool curl sed grep systemctl socat
 
-# Determine the correct config file path
-CONFIG_FILE_PATHS=("/boot/firmware/config.txt" "/boot/config.txt")
-CONFIG_FILE=""
-for path in "${CONFIG_FILE_PATHS[@]}"; do
-  if [ -f "$path" ]; then
-    CONFIG_FILE="$path"
-    break
-  fi
-done
-
-if [ -z "$CONFIG_FILE" ]; then
-  echo -e "${RED}Error: config.txt not found in known locations.${NC}"
-  exit 1
-fi
-
-# Check if HiFiBerry is configured
-if ! grep -q "^dtoverlay=hifiberry" "$CONFIG_FILE"; then
-  echo -e "${RED}No HiFiBerry card configured in $CONFIG_FILE${NC}"
-  echo -e "${RED}Please configure your HiFiBerry device before running this script.${NC}"
-  echo -e "${YELLOW}Add the appropriate dtoverlay line to $CONFIG_FILE${NC}"
-  echo -e "${YELLOW}Example: dtoverlay=hifiberry-dacplus${NC}\n"
-  exit 1
-fi
-
 # Display banner
 echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}  rpi-audio-distributor installer${NC}"
