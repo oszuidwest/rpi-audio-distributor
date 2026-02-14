@@ -70,10 +70,6 @@ audio-ctl volume           # Show current volume
 audio-ctl volume 50        # Set volume to 50 (persists across restarts)
 audio-ctl stream           # Show current stream URL
 audio-ctl stream <url>     # Change stream URL and restart service
-audio-ctl pan              # Show current pan setting
-audio-ctl pan left         # Output left channel only (both speakers)
-audio-ctl pan right        # Output right channel only (both speakers)
-audio-ctl pan stereo       # Normal stereo output
 audio-ctl restart          # Restart the mpv-stream service
 ```
 

@@ -5,26 +5,19 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/bin/bash -c '\
-  source "$$HOME/.config/audio-distributor/config" && \
-  case "$${PAN:-stereo}" in \
-    left) AF="lavfi=[pan=2|c0=c0|c1=c0]" ;; \
-    right) AF="lavfi=[pan=2|c0=c1|c1=c1]" ;; \
-    *) AF="" ;; \
-  esac && \
-  exec /usr/bin/mpv \
-    --no-video \
-    --audio-device="$$AUDIO_DEVICE" \
-    --volume="$$VOLUME" \
-    $${AF:+--af="$$AF"} \
-    --network-timeout=5 \
-    --demuxer-readahead-secs=3 \
-    --cache=yes \
-    --cache-secs=3 \
-    --input-ipc-server=/tmp/mpv-audio.sock \
-    --idle=no \
-    --user-agent="rpi-audio-distributor ($$(hostname))" \
-    "$$STREAM_URL"'
+EnvironmentFile=%h/.config/audio-distributor/config
+ExecStart=/usr/bin/mpv \
+  --no-video \
+  --audio-device=${AUDIO_DEVICE} \
+  --volume=${VOLUME} \
+  --network-timeout=5 \
+  --demuxer-readahead-secs=3 \
+  --cache=yes \
+  --cache-secs=3 \
+  --input-ipc-server=/tmp/mpv-audio.sock \
+  --idle=no \
+  --user-agent="rpi-audio-distributor (${HOSTNAME})" \
+  "${STREAM_URL}"
 Restart=always
 RestartSec=5
 StartLimitIntervalSec=0

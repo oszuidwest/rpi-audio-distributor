@@ -70,13 +70,12 @@ restart_service() {
 cmd_status() {
   find_config
 
-  local state volume audio_device stream_url idle pan
+  local state volume audio_device stream_url idle
   idle=$(mpv_get_property "idle-active" 2>/dev/null)
   state=$(mpv_get_property "pause" 2>/dev/null)
   volume=$(mpv_get_property "volume" 2>/dev/null)
   audio_device=$(config_get "AUDIO_DEVICE")
   stream_url=$(config_get "STREAM_URL")
-  pan=$(config_get "PAN")
 
   echo "Stream URL:   ${stream_url:-unknown}"
   echo "Audio device: ${audio_device:-unknown}"
@@ -96,7 +95,6 @@ cmd_status() {
     volume=$(printf "%.0f" "$volume")
   fi
   echo "Volume:       ${volume:-unknown}"
-  echo "Pan:          ${pan:-stereo}"
 }
 
 cmd_volume() {
@@ -151,40 +149,6 @@ cmd_stream() {
   echo "Service restarted"
 }
 
-cmd_pan() {
-  find_config
-
-  if [ $# -eq 0 ]; then
-    local pan
-    pan=$(config_get "PAN")
-    echo "${pan:-stereo}"
-    return
-  fi
-
-  local pan="$1"
-
-  case "$pan" in
-    left)
-      mpv_ipc "{\"command\":[\"set_property\",\"af\",[{\"name\":\"lavfi\",\"params\":{\"graph\":\"pan=2|c0=c0|c1=c0\"}}]]}" > /dev/null
-      ;;
-    right)
-      mpv_ipc "{\"command\":[\"set_property\",\"af\",[{\"name\":\"lavfi\",\"params\":{\"graph\":\"pan=2|c0=c1|c1=c1\"}}]]}" > /dev/null
-      ;;
-    stereo)
-      mpv_ipc "{\"command\":[\"set_property\",\"af\",[]]}" > /dev/null
-      ;;
-    *)
-      echo "Error: Pan must be 'left', 'right', or 'stereo'" >&2
-      exit 1
-      ;;
-  esac
-
-  # Persist to config
-  config_set "PAN" "$pan"
-
-  echo "Pan set to ${pan}"
-}
-
 cmd_restart() {
   find_config
   restart_service
@@ -200,9 +164,6 @@ cmd_help() {
   echo "  volume <0-100> Set volume (persists across restarts)"
   echo "  stream        Show current stream URL"
   echo "  stream <url>  Change stream URL and restart service"
-  echo "  pan           Show current pan setting"
-  echo "  pan <left|right|stereo>"
-  echo "                Set audio channel (persists across restarts)"
   echo "  restart       Restart the mpv-stream service"
   echo "  help          Show this help message"
 }
@@ -212,7 +173,6 @@ case "${1:-help}" in
   status)  cmd_status ;;
   volume)  shift; cmd_volume "$@" ;;
   stream)  shift; cmd_stream "$@" ;;
-  pan)     shift; cmd_pan "$@" ;;
   restart) cmd_restart ;;
   help|--help|-h) cmd_help ;;
   *)
