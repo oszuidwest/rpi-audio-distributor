@@ -162,30 +162,22 @@ cmd_pan() {
   fi
 
   local pan="$1"
-  local filter=""
 
   case "$pan" in
     left)
-      filter="lavfi=[pan=2|c0=c0|c1=c0]"
+      mpv_ipc "{\"command\":[\"set_property\",\"af\",[{\"name\":\"lavfi\",\"params\":{\"graph\":\"pan=2|c0=c0|c1=c0\"}}]]}" > /dev/null
       ;;
     right)
-      filter="lavfi=[pan=2|c0=c1|c1=c1]"
+      mpv_ipc "{\"command\":[\"set_property\",\"af\",[{\"name\":\"lavfi\",\"params\":{\"graph\":\"pan=2|c0=c1|c1=c1\"}}]]}" > /dev/null
       ;;
     stereo)
-      filter=""
+      mpv_ipc "{\"command\":[\"set_property\",\"af\",[]]}" > /dev/null
       ;;
     *)
       echo "Error: Pan must be 'left', 'right', or 'stereo'" >&2
       exit 1
       ;;
   esac
-
-  # Apply via IPC (immediate effect)
-  if [ -n "$filter" ]; then
-    mpv_ipc "{\"command\":[\"af\",\"set\",\"$filter\"]}" > /dev/null
-  else
-    mpv_ipc "{\"command\":[\"af\",\"set\",\"\"]}" > /dev/null
-  fi
 
   # Persist to config
   config_set "PAN" "$pan"
