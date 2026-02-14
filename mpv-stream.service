@@ -7,11 +7,16 @@ Wants=network-online.target
 Type=simple
 ExecStart=/bin/bash -c '\
   source "$$HOME/.config/audio-distributor/config" && \
+  case "$${PAN:-stereo}" in \
+    left) AF="lavfi=[pan=2|c0=c0|c1=c0]" ;; \
+    right) AF="lavfi=[pan=2|c0=c1|c1=c1]" ;; \
+    *) AF="" ;; \
+  esac && \
   exec /usr/bin/mpv \
     --no-video \
     --audio-device="$$AUDIO_DEVICE" \
     --volume="$$VOLUME" \
-    $${AUDIO_FILTER:+--af="$$AUDIO_FILTER"} \
+    $${AF:+--af="$$AF"} \
     --network-timeout=5 \
     --demuxer-readahead-secs=3 \
     --cache=yes \

@@ -189,7 +189,6 @@ cmd_pan() {
 
   # Persist to config
   config_set "PAN" "$pan"
-  config_set "AUDIO_FILTER" "$filter"
 
   echo "Pan set to ${pan}"
 }
