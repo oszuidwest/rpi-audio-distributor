@@ -27,5 +27,5 @@ fi
 
 # Stream is healthy — send heartbeat if configured
 if [ -n "$HEARTBEAT_URL" ]; then
-  wget --spider -q "$HEARTBEAT_URL" > /dev/null 2>&1 || true
+  curl -fsI "$HEARTBEAT_URL" > /dev/null 2>&1 || true
 fi

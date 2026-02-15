@@ -51,11 +51,12 @@ config_get() {
 config_set() {
   local key="$1"
   local value="$2"
-  if grep -q "^${key}=" "$CONFIG_FILE" 2>/dev/null; then
-    sed -i "s|^${key}=.*|${key}=\"${value}\"|" "$CONFIG_FILE"
-  else
-    echo "${key}=\"${value}\"" >> "$CONFIG_FILE"
-  fi
+  local tmpfile
+  tmpfile=$(mktemp)
+  grep -v "^${key}=" "$CONFIG_FILE" > "$tmpfile" 2>/dev/null || true
+  echo "${key}=\"${value}\"" >> "$tmpfile"
+  cat "$tmpfile" > "$CONFIG_FILE"
+  rm -f "$tmpfile"
 }
 
 # Restart the mpv-stream service for the config owner

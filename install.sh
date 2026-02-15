@@ -23,7 +23,7 @@ assert_user_privileged "regular"
 assert_os_linux
 assert_os_64bit
 assert_hw_rpi 4
-assert_tool curl sed grep systemctl socat
+assert_tool curl grep systemctl
 
 # Display banner
 echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -40,16 +40,11 @@ prompt_user "VOLUME" "75" "Enter the default volume (0-100)" "num"
 # Detect and list ALSA audio devices
 echo -e "\n${BLUE}►► Detecting audio devices...${NC}"
 declare -a CARD_NAMES=()
-declare -a CARD_IDS=()
 
 while IFS= read -r line; do
-  if [[ "$line" =~ ^[[:space:]]*([0-9]+)[[:space:]]*\[([^]]+)\] ]]; then
-    card_id="${BASH_REMATCH[1]}"
-    card_name="${BASH_REMATCH[2]}"
-    # Trim whitespace
-    card_name=$(echo "$card_name" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+  if [[ "$line" =~ ^[[:space:]]*[0-9]+[[:space:]]*\[([^]]+)\] ]]; then
+    read -r card_name <<< "${BASH_REMATCH[1]}"
     CARD_NAMES+=("$card_name")
-    CARD_IDS+=("$card_id")
   fi
 done < /proc/asound/cards
 
@@ -93,12 +88,7 @@ echo -e "${GREEN}✓ Timezone set${NC}"
 
 # Set hostname
 echo -e "${BLUE}►► Setting hostname to ${DEVICE_HOSTNAME}...${NC}"
-sudo hostnamectl set-hostname "$DEVICE_HOSTNAME"
-if grep -q "^127\.0\.1\.1" /etc/hosts; then
-  sudo sed -i "s/^127\.0\.1\.1.*/127.0.1.1\t${DEVICE_HOSTNAME}/" /etc/hosts
-else
-  echo -e "127.0.1.1\t${DEVICE_HOSTNAME}" | sudo tee -a /etc/hosts > /dev/null
-fi
+sudo raspi-config nonint do_hostname "$DEVICE_HOSTNAME"
 echo -e "${GREEN}✓ Hostname set${NC}"
 
 # OS updates
@@ -110,7 +100,7 @@ fi
 
 # Install dependencies
 echo -e "${BLUE}►► Installing required packages...${NC}"
-apt_install --silent mpv socat jq wget
+apt_install --silent mpv socat jq
 echo -e "${GREEN}✓ Packages installed${NC}"
 
 # Create config directory and write config
@@ -118,7 +108,7 @@ echo -e "${BLUE}►► Writing configuration...${NC}"
 mkdir -p ~/.config/audio-distributor
 cat > ~/.config/audio-distributor/config <<EOF
 STREAM_URL="${STREAM_URL}"
-VOLUME=${VOLUME}
+VOLUME="${VOLUME}"
 AUDIO_DEVICE="${AUDIO_DEVICE}"
 EOF
 echo -e "${GREEN}✓ Configuration saved to ~/.config/audio-distributor/config${NC}"
@@ -154,22 +144,13 @@ echo -e "${GREEN}✓ Health check installed to ~/.local/bin/health-check.sh${NC}
 # Set up cron job for health check
 echo -e "${BLUE}►► Setting up health check cron job...${NC}"
 
-# Ensure a crontab exists
-if ! crontab -l 2>/dev/null; then
-  echo "" | crontab -
-fi
-
-# Remove any existing health-check cron jobs
-crontab -l 2>/dev/null | grep -v "health-check.sh" | crontab -
-
-# Add the health check cron job
 if [ "$ENABLE_HEARTBEAT" = "y" ]; then
   HEALTH_CRONJOB="* * * * * ${HOME}/.local/bin/health-check.sh '${HEARTBEAT_URL}'"
 else
   HEALTH_CRONJOB="* * * * * ${HOME}/.local/bin/health-check.sh"
 fi
 
-(crontab -l 2>/dev/null; echo "$HEALTH_CRONJOB") | crontab -
+{ crontab -l 2>/dev/null | grep -v "health-check.sh" || true; echo "$HEALTH_CRONJOB"; } | crontab -
 echo -e "${GREEN}✓ Health check cron job configured${NC}"
 
 # Validate installation
