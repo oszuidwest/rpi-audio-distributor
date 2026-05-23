@@ -98,6 +98,10 @@ if [ "$DO_UPDATES" = "y" ]; then
   echo -e "${GREEN}✓ OS updated${NC}"
 fi
 
+if declare -F set_system_hardening_baseline > /dev/null; then
+  set_system_hardening_baseline --silent
+fi
+
 # Install dependencies
 echo -e "${BLUE}►► Installing required packages...${NC}"
 apt_install --silent mpv socat jq
