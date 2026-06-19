@@ -86,7 +86,7 @@ echo -e "\n${BLUE}►► Setting timezone to Europe/Amsterdam...${NC}"
 set_timezone "Europe/Amsterdam"
 echo -e "${GREEN}✓ Timezone set${NC}"
 
-# Keep host time sync and journald limits current when supported
+# Configure time sync and journald storage limits when supported
 set_time_sync
 set_journald_limits
 
