@@ -81,13 +81,13 @@ if [ "$ENABLE_HEARTBEAT" = "y" ]; then
   prompt_user "HEARTBEAT_URL" "https://heartbeat.uptimerobot.com/xxx" "Enter the heartbeat URL" "str"
 fi
 
-# Set timezone
+# Configure host time settings
 echo -e "\n${BLUE}►► Setting timezone to Europe/Amsterdam...${NC}"
 set_timezone "Europe/Amsterdam"
 echo -e "${GREEN}✓ Timezone set${NC}"
-
-# Configure time sync and journald storage limits when supported
 set_time_sync
+
+# Configure journald storage limits
 set_journald_limits
 
 # Set hostname
