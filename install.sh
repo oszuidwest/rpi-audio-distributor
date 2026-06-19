@@ -82,9 +82,7 @@ if [ "$ENABLE_HEARTBEAT" = "y" ]; then
 fi
 
 # Configure host time settings
-echo -e "\n${BLUE}►► Setting timezone to Europe/Amsterdam...${NC}"
-set_timezone "Europe/Amsterdam"
-echo -e "${GREEN}✓ Timezone set${NC}"
+set_timezone Europe/Amsterdam
 set_time_sync
 
 # Configure journald storage limits
