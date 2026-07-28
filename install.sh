@@ -4,14 +4,21 @@ set -euo pipefail
 # Configuration
 REPO_BASE="https://raw.githubusercontent.com/oszuidwest/rpi-audio-distributor/main"
 
-# Set up the functions library
+BASH_FUNCTIONS_REF="main"
 FUNCTIONS_LIB_PATH=$(mktemp)
-FUNCTIONS_LIB_URL="https://raw.githubusercontent.com/oszuidwest/bash-functions/main/common-functions.sh"
+FUNCTIONS_LIB_URL="https://raw.githubusercontent.com/oszuidwest/bash-functions/${BASH_FUNCTIONS_REF}/common-functions.sh"
 
 trap 'rm -f "$FUNCTIONS_LIB_PATH"' EXIT
 
-if ! curl -s -o "$FUNCTIONS_LIB_PATH" "$FUNCTIONS_LIB_URL"; then
-  echo -e "*** Failed to download functions library. Please check your network connection! ***"
+clear || true
+
+if ! command -v curl >/dev/null 2>&1; then
+  echo "*** curl is required to download the functions library. ***"
+  exit 1
+fi
+
+if ! curl -fsSL -o "$FUNCTIONS_LIB_PATH" "$FUNCTIONS_LIB_URL"; then
+  echo "*** Failed to download functions library. Please check your network connection. ***"
   exit 1
 fi
 
@@ -19,6 +26,7 @@ fi
 source "$FUNCTIONS_LIB_PATH"
 
 # Validate environment
+set_colors
 assert_user_privileged "regular"
 assert_os_linux
 assert_os_64bit
@@ -108,6 +116,9 @@ echo -e "${GREEN}✓ Packages installed${NC}"
 # Create config directory and write config
 echo -e "${BLUE}►► Writing configuration...${NC}"
 mkdir -p ~/.config/audio-distributor
+if [ -f ~/.config/audio-distributor/config ] && ! file_backup ~/.config/audio-distributor/config; then
+  exit 1
+fi
 cat > ~/.config/audio-distributor/config <<EOF
 STREAM_URL="${STREAM_URL}"
 VOLUME="${VOLUME}"
@@ -118,7 +129,7 @@ echo -e "${GREEN}✓ Configuration saved to ~/.config/audio-distributor/config${
 # Install mpv-stream service
 echo -e "${BLUE}►► Installing mpv-stream service...${NC}"
 mkdir -p ~/.config/systemd/user
-file_download "${REPO_BASE}/mpv-stream.service" ~/.config/systemd/user/mpv-stream.service "mpv-stream service"
+file_download "${REPO_BASE}/mpv-stream.service" ~/.config/systemd/user/mpv-stream.service "mpv-stream service" --backup
 systemctl --user daemon-reload
 systemctl --user enable mpv-stream
 echo -e "${GREEN}✓ mpv-stream service installed and enabled${NC}"
@@ -139,7 +150,7 @@ echo -e "${GREEN}✓ audio-ctl installed to /usr/local/bin/audio-ctl${NC}"
 # Install health-check script
 echo -e "${BLUE}►► Installing health check script...${NC}"
 mkdir -p ~/.local/bin
-file_download "${REPO_BASE}/health-check.sh" ~/.local/bin/health-check.sh "health-check script"
+file_download "${REPO_BASE}/health-check.sh" ~/.local/bin/health-check.sh "health-check script" --backup
 chmod 755 ~/.local/bin/health-check.sh
 echo -e "${GREEN}✓ Health check installed to ~/.local/bin/health-check.sh${NC}"
 
